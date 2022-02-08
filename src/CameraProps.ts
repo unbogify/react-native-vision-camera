@@ -193,6 +193,7 @@ export interface CameraProps extends ViewProps {
    * ```
    */
   frameProcessor?: (frame: Frame) => void;
+  audioFrameProcessor?: (frame: Frame) => void;
   /**
    * Specifies the maximum frame rate the frame processor can use, independent of the Camera's frame rate (`fps` property).
    *

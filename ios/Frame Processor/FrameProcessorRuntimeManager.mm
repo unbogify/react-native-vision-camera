@@ -47,7 +47,8 @@ __attribute__((objc_runtime_name("_TtC12VisionCamera12CameraQueues")))
 @end
 __attribute__((objc_runtime_name("_TtC12VisionCamera10CameraView")))
 @interface CameraView : UIView
-@property (nonatomic, copy) FrameProcessorCallback _Nullable frameProcessorCallback;
+@property (nonatomic, copy) FrameProcessorCallback _Nullable videoFrameProcessorCallback;
+@property (nonatomic, copy) FrameProcessorCallback _Nullable audioFrameProcessorCallback;
 @end
 
 @implementation FrameProcessorRuntimeManager {
@@ -136,7 +137,7 @@ __attribute__((objc_runtime_name("_TtC12VisionCamera10CameraView")))
                                   const jsi::Value& thisValue,
                                   const jsi::Value* arguments,
                                   size_t count) -> jsi::Value {
-    NSLog(@"FrameProcessorBindings: Setting new frame processor...");
+    NSLog(@"FrameProcessorBindings: Setting new video frame processor...");
     if (!arguments[0].isNumber()) throw jsi::JSError(runtime, "Camera::setFrameProcessor: First argument ('viewTag') must be a number!");
     if (!arguments[1].isObject()) throw jsi::JSError(runtime, "Camera::setFrameProcessor: Second argument ('frameProcessor') must be a function!");
     if (!runtimeManager || !runtimeManager->runtime) throw jsi::JSError(runtime, "Camera::setFrameProcessor: The RuntimeManager is not yet initialized!");
@@ -157,7 +158,7 @@ __attribute__((objc_runtime_name("_TtC12VisionCamera10CameraView")))
         auto& rt = *runtimeManager->runtime;
         auto function = worklet->getValue(rt).asObject(rt).asFunction(rt);
 
-        view.frameProcessorCallback = convertJSIFunctionToFrameProcessorCallback(rt, function);
+        view.videoFrameProcessorCallback = convertJSIFunctionToFrameProcessorCallback(rt, function);
         NSLog(@"FrameProcessorBindings: Frame processor set!");
       });
     });
@@ -169,12 +170,50 @@ __attribute__((objc_runtime_name("_TtC12VisionCamera10CameraView")))
                                                                                                          2,  // viewTag, frameProcessor
                                                                                                          setFrameProcessor));
 
+    // setFrameProcessor(viewTag: number, frameProcessor: (frame: Frame) => void)
+    auto setAudioFrameProcessor = [self](jsi::Runtime& runtime,
+                                    const jsi::Value& thisValue,
+                                    const jsi::Value* arguments,
+                                    size_t count) -> jsi::Value {
+      NSLog(@"FrameProcessorBindings: Setting new audio frame processor...");
+      if (!arguments[0].isNumber()) throw jsi::JSError(runtime, "Camera::setFrameProcessor: First argument ('viewTag') must be a number!");
+      if (!arguments[1].isObject()) throw jsi::JSError(runtime, "Camera::setFrameProcessor: Second argument ('frameProcessor') must be a function!");
+      if (!runtimeManager || !runtimeManager->runtime) throw jsi::JSError(runtime, "Camera::setFrameProcessor: The RuntimeManager is not yet initialized!");
+
+      auto viewTag = arguments[0].asNumber();
+      NSLog(@"FrameProcessorBindings: Adapting Shareable value from function (conversion to worklet)...");
+      auto worklet = reanimated::ShareableValue::adapt(runtime, arguments[1], runtimeManager.get());
+      NSLog(@"FrameProcessorBindings: Successfully created worklet!");
+
+      RCTExecuteOnMainQueue([=]() {
+        auto currentBridge = [RCTBridge currentBridge];
+        auto anonymousView = [currentBridge.uiManager viewForReactTag:[NSNumber numberWithDouble:viewTag]];
+        auto view = static_cast<CameraView*>(anonymousView);
+
+        dispatch_async(CameraQueues.frameProcessorQueue, [=]() {
+          NSLog(@"FrameProcessorBindings: Converting worklet to Objective-C callback...");
+
+          auto& rt = *runtimeManager->runtime;
+          auto function = worklet->getValue(rt).asObject(rt).asFunction(rt);
+
+          view.audioFrameProcessorCallback = convertJSIFunctionToFrameProcessorCallback(rt, function);
+          NSLog(@"FrameProcessorBindings: Frame processor set!");
+        });
+      });
+
+      return jsi::Value::undefined();
+    };
+    jsiRuntime.global().setProperty(jsiRuntime, "setAudioFrameProcessor", jsi::Function::createFromHostFunction(jsiRuntime,
+                                                                                                           jsi::PropNameID::forAscii(jsiRuntime, "setAudioFrameProcessor"),
+                                                                                                           2,  // viewTag, frameProcessor
+                                                                                                           setAudioFrameProcessor));
+
   // unsetFrameProcessor(viewTag: number)
   auto unsetFrameProcessor = [](jsi::Runtime& runtime,
                                 const jsi::Value& thisValue,
                                 const jsi::Value* arguments,
                                 size_t count) -> jsi::Value {
-    NSLog(@"FrameProcessorBindings: Removing frame processor...");
+    NSLog(@"FrameProcessorBindings: Removing video frame processor...");
     if (!arguments[0].isNumber()) throw jsi::JSError(runtime, "Camera::unsetFrameProcessor: First argument ('viewTag') must be a number!");
     auto viewTag = arguments[0].asNumber();
 
@@ -186,7 +225,7 @@ __attribute__((objc_runtime_name("_TtC12VisionCamera10CameraView")))
       if (!anonymousView) return;
 
       auto view = static_cast<CameraView*>(anonymousView);
-      view.frameProcessorCallback = nil;
+      view.videoFrameProcessorCallback = nil;
       NSLog(@"FrameProcessorBindings: Frame processor removed!");
     });
 
@@ -197,6 +236,33 @@ __attribute__((objc_runtime_name("_TtC12VisionCamera10CameraView")))
                                                                                                            1,  // viewTag
                                                                                                            unsetFrameProcessor));
 
+    // unsetFrameProcessor(viewTag: number)
+    auto unsetAudioFrameProcessor = [](jsi::Runtime& runtime,
+                                  const jsi::Value& thisValue,
+                                  const jsi::Value* arguments,
+                                  size_t count) -> jsi::Value {
+      NSLog(@"FrameProcessorBindings: Removing audio frame processor...");
+      if (!arguments[0].isNumber()) throw jsi::JSError(runtime, "Camera::unsetFrameProcessor: First argument ('viewTag') must be a number!");
+      auto viewTag = arguments[0].asNumber();
+
+      RCTExecuteOnMainQueue(^{
+        auto currentBridge = [RCTBridge currentBridge];
+        if (!currentBridge) return;
+
+        auto anonymousView = [currentBridge.uiManager viewForReactTag:[NSNumber numberWithDouble:viewTag]];
+        if (!anonymousView) return;
+
+        auto view = static_cast<CameraView*>(anonymousView);
+        view.audioFrameProcessorCallback = nil;
+        NSLog(@"FrameProcessorBindings: Frame processor removed!");
+      });
+
+      return jsi::Value::undefined();
+    };
+    jsiRuntime.global().setProperty(jsiRuntime, "unsetAudioFrameProcessor", jsi::Function::createFromHostFunction(jsiRuntime,
+                                                                                                             jsi::PropNameID::forAscii(jsiRuntime, "unsetAudioFrameProcessor"),
+                                                                                                             1,  // viewTag
+                                                                                                             unsetAudioFrameProcessor));
   NSLog(@"FrameProcessorBindings: Finished installing bindings.");
 #endif
 }
