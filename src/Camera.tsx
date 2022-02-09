@@ -22,7 +22,7 @@ interface OnErrorEvent {
 }
 type NativeCameraViewProps = Omit<
   CameraProps,
-  'device' | 'onInitialized' | 'onError' | 'onFrameProcessorPerformanceSuggestionAvailable' | 'frameProcessor' | 'frameProcessorFps'
+  'device' | 'onInitialized' | 'onError' | 'onFrameProcessorPerformanceSuggestionAvailable' | 'frameProcessor' | 'audioFrameProcessor' | 'frameProcessorFps'
 > & {
   cameraId: string;
   frameProcessorFps?: number; // native cannot use number | string, so we use '-1' for 'auto'
@@ -454,7 +454,7 @@ export class Camera extends React.PureComponent<CameraProps> {
   /** @internal */
   public render(): React.ReactNode {
     // We remove the big `device` object from the props because we only need to pass `cameraId` to native.
-    const { device, frameProcessor, frameProcessorFps, ...props } = this.props;
+    const { device, frameProcessor, audioFrameProcessor, frameProcessorFps, ...props } = this.props;
     return (
       <NativeCameraView
         {...props}

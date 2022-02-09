@@ -212,14 +212,21 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
 
     if let frameProcessor = audioFrameProcessorCallback, captureOutput is AVCaptureAudioDataOutput {
         if !isRunningAudioFrameProcessor {
-            // we're not in the middle of executing the Frame Processor, so prepare for next call.
-            CameraQueues.frameProcessorQueue.async {
-                self.isRunningAudioFrameProcessor = true
+            var bufferCopy : CMSampleBuffer?
+            let err = CMSampleBufferCreateCopy(allocator: kCFAllocatorDefault, sampleBuffer: sampleBuffer, sampleBufferOut: &bufferCopy)
+            if err == noErr {
+                // we're not in the middle of executing the Frame Processor, so prepare for next call.
+                CameraQueues.frameProcessorQueue.async {
+                    self.isRunningAudioFrameProcessor = true
+                    let timestamp = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
 
-                let frame = Frame(buffer: sampleBuffer, orientation: self.bufferOrientation)
-                frameProcessor(frame)
+                    //print("AVCaptureAudioDataOutput \(timestamp)\n")
 
-                self.isRunningAudioFrameProcessor = false
+                    let frame = Frame(buffer: bufferCopy!, orientation: self.bufferOrientation)
+                    frameProcessor(frame)
+
+                    self.isRunningAudioFrameProcessor = false
+                }
             }
         } else {
             // we're still in the middle of executing a Frame Processor for a previous frame, so a frame was dropped.
