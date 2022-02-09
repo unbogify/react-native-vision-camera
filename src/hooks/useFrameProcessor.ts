@@ -52,7 +52,6 @@ export function useFrameProcessor(frameProcessor: FrameProcessor, dependencies: 
       // @ts-expect-error
       global.didSetConsole = true;
     }
-
     frameProcessor(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, dependencies);
