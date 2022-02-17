@@ -267,7 +267,7 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
 
     let maxFrameProcessorFps = Double(videoDevice.activeVideoMinFrameDuration.timescale) * Double(videoDevice.activeVideoMinFrameDuration.value)
     let averageFps = 1.0 / frameProcessorPerformanceDataCollector.averageExecutionTimeSeconds
-    let suggestedFrameProcessorFps = floor(min(averageFps, maxFrameProcessorFps))
+    let suggestedFrameProcessorFps = max(floor(min(averageFps, maxFrameProcessorFps)), 1)
 
     if frameProcessorFps.intValue == -1 {
       // frameProcessorFps="auto"
