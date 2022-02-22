@@ -99,12 +99,17 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
         }
       }
 
+      var recordingSession: RecordingSession?
       do {
-        self.recordingSession = try RecordingSession(url: tempURL,
+        recordingSession = try RecordingSession(url: tempURL,
                                                      fileType: fileType,
                                                      completion: onFinish)
       } catch let error as NSError {
         callback.reject(error: .capture(.createRecorderError(message: nil)), cause: error)
+        return
+      }
+      guard let recordingSession = recordingSession else {
+        callback.reject(error: .capture(.createRecorderError(message: nil)))
         return
       }
 
@@ -122,7 +127,7 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
 
       // get pixel format (420f, 420v, x420)
       let pixelFormat = CMFormatDescriptionGetMediaSubType(videoInput.device.activeFormat.formatDescription)
-      self.recordingSession!.initializeVideoWriter(withSettings: videoSettings,
+      recordingSession.initializeVideoWriter(withSettings: videoSettings,
                                                    pixelFormat: pixelFormat)
 
       // Init Audio (optional, async)
@@ -132,18 +137,20 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
 
         if let audioOutput = self.audioOutput,
            let audioSettings = audioOutput.recommendedAudioSettingsForAssetWriter(writingTo: fileType) {
-          self.recordingSession!.initializeAudioWriter(withSettings: audioSettings)
+          recordingSession.initializeAudioWriter(withSettings: audioSettings)
         }
       }
 
       // start recording session with or without audio.
       do {
-        try self.recordingSession!.start()
+        try recordingSession.start()
       } catch {
         callback.reject(error: .capture(.createRecorderError(message: "RecordingSession failed to start writing.")))
         return
       }
+      self.recordingSession = recordingSession
       self.isRecording = true
+      self.invokeOnRecordingStarted(videoPath: tempURL.absoluteString)
     }
   }
 
