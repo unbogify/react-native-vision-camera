@@ -1,6 +1,6 @@
 import React from 'react';
 import { requireNativeComponent, NativeModules, NativeSyntheticEvent, findNodeHandle, NativeMethods, Platform } from 'react-native';
-import type { FrameProcessorPerformanceSuggestion, VideoFileType } from '.';
+import type { FrameProcessorPerformanceSuggestion, TemporaryFile, VideoFileType } from '.';
 import type { CameraDevice } from './CameraDevice';
 import type { ErrorWithCause } from './CameraError';
 import { CameraCaptureError, CameraRuntimeError, tryParseNativeCameraError, isErrorWithCause } from './CameraError';
@@ -20,9 +20,14 @@ interface OnErrorEvent {
   message: string;
   cause?: ErrorWithCause;
 }
+
+interface OnRecordingStartedEvent {
+  video: TemporaryFile;
+}
+
 type NativeCameraViewProps = Omit<
   CameraProps,
-  'device' | 'onInitialized' | 'onError' | 'onFrameProcessorPerformanceSuggestionAvailable' | 'frameProcessor' | 'audioFrameProcessor' | 'frameProcessorFps'
+  'device' | 'onInitialized' | 'onError' | 'onFrameProcessorPerformanceSuggestionAvailable' | 'onRecordingStarted' | 'frameProcessor' | 'audioFrameProcessor' | 'frameProcessorFps'
 > & {
   cameraId: string;
   frameProcessorFps?: number; // native cannot use number | string, so we use '-1' for 'auto'
@@ -30,6 +35,7 @@ type NativeCameraViewProps = Omit<
   onInitialized?: (event: NativeSyntheticEvent<void>) => void;
   onError?: (event: NativeSyntheticEvent<OnErrorEvent>) => void;
   onFrameProcessorPerformanceSuggestionAvailable?: (event: NativeSyntheticEvent<FrameProcessorPerformanceSuggestion>) => void;
+  onRecordingStarted?: (event: NativeSyntheticEvent<OnRecordingStartedEvent>) => void;
   onViewReady: () => void;
 };
 type RefType = React.Component<NativeCameraViewProps> & Readonly<NativeMethods>;
@@ -88,6 +94,7 @@ export class Camera extends React.PureComponent<CameraProps> {
     this.onInitialized = this.onInitialized.bind(this);
     this.onError = this.onError.bind(this);
     this.onFrameProcessorPerformanceSuggestionAvailable = this.onFrameProcessorPerformanceSuggestionAvailable.bind(this);
+    this.onRecordingStarted = this.onRecordingStarted.bind(this);
     this.ref = React.createRef<RefType>();
     this.lastFrameProcessor = undefined;
     this.lastAudioFrameProcessor = undefined;
@@ -421,6 +428,10 @@ export class Camera extends React.PureComponent<CameraProps> {
     if (this.props.onFrameProcessorPerformanceSuggestionAvailable != null)
       this.props.onFrameProcessorPerformanceSuggestionAvailable(event.nativeEvent);
   }
+
+  private onRecordingStarted(event: NativeSyntheticEvent<OnRecordingStartedEvent>): void {
+    this.props.onRecordingStarted?.(event.nativeEvent.video);
+  }
   //#endregion
 
   //#region Lifecycle
@@ -522,6 +533,7 @@ export class Camera extends React.PureComponent<CameraProps> {
         onInitialized={this.onInitialized}
         onError={this.onError}
         onFrameProcessorPerformanceSuggestionAvailable={this.onFrameProcessorPerformanceSuggestionAvailable}
+        onRecordingStarted={this.onRecordingStarted}
         enableFrameProcessor={frameProcessor != null}
       />
     );

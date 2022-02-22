@@ -1,4 +1,5 @@
 import type { ViewProps } from 'react-native';
+import type { TemporaryFile } from 'react-native-vision-camera/src';
 import type { CameraDevice, CameraDeviceFormat, ColorSpace, VideoStabilizationMode } from './CameraDevice';
 import type { CameraRuntimeError } from './CameraError';
 import type { CameraPreset } from './CameraPreset';
@@ -174,6 +175,10 @@ export interface CameraProps extends ViewProps {
    * Called when a new performance suggestion for a Frame Processor is available - either if your Frame Processor is running too fast and frames are being dropped, or because it is able to run faster. Optionally, you can adjust your `frameProcessorFps` accordingly.
    */
   onFrameProcessorPerformanceSuggestionAvailable?: (suggestion: FrameProcessorPerformanceSuggestion) => void;
+  /**
+   * Called after starting a new recording successfully.
+   */
+  onRecordingStarted?: (video: TemporaryFile) => void;
   /**
    * A worklet which will be called for every frame the Camera "sees". Throttle the Frame Processor's frame rate with {@linkcode frameProcessorFps}.
    *

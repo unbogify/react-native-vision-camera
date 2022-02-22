@@ -67,6 +67,7 @@ public final class CameraView: UIView {
   @objc var onError: RCTDirectEventBlock?
   @objc var onFrameProcessorPerformanceSuggestionAvailable: RCTDirectEventBlock?
   @objc var onViewReady: RCTDirectEventBlock?
+  @objc var onRecordingStarted: RCTDirectEventBlock?
   // zoom
   @objc var enableZoomGesture = false {
     didSet {
@@ -358,5 +359,11 @@ public final class CameraView: UIView {
       "suggestedFrameProcessorFps": suggestedFps,
     ])
     lastSuggestedFrameProcessorFps = suggestedFps
+  }
+
+  internal final func invokeOnRecordingStarted(videoPath: String) {
+    guard let onRecordingStarted = onRecordingStarted else { return }
+    ReactLogger.log(level: .info, message: "invokeOnRecordingStarted \(videoPath)")
+    onRecordingStarted(["video": ["path": videoPath]])
   }
 }

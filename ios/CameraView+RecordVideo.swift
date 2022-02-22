@@ -145,7 +145,9 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
         callback.reject(error: .capture(.createRecorderError(message: "RecordingSession failed to start asset writer.")), cause: error)
         return
       }
+      self.recordingSession = recordingSession
       self.isRecording = true
+      self.invokeOnRecordingStarted(videoPath: tempURL.absoluteString)
     }
   }
 
