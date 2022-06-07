@@ -1,5 +1,5 @@
 import type { ViewProps } from 'react-native';
-import type { TemporaryFile } from 'react-native-vision-camera/src';
+import type { TemporaryFile } from './TemporaryFile';
 import type { CameraDevice, CameraDeviceFormat, ColorSpace, VideoStabilizationMode } from './CameraDevice';
 import type { CameraRuntimeError } from './CameraError';
 import type { CameraPreset } from './CameraPreset';
