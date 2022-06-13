@@ -43,7 +43,7 @@
     "eslint": "^7.32.0",
     "metro-config": "^0.66.2",
     "metro-react-native-babel-preset": "^0.66.2",
-    "prettier": "^2.4.1",
+    "prettier": "^2.6.2",
     "typescript": "^4.4.3"
   }
 }
