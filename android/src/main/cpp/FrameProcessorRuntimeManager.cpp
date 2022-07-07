@@ -105,15 +105,15 @@ void FrameProcessorRuntimeManager::logErrorToJS(const std::string& message) {
   });
 }
 
-void FrameProcessorRuntimeManager::setFrameProcessor(jsi::Runtime& runtime,
+void FrameProcessorRuntimeManager::setAudioFrameProcessor(jsi::Runtime& runtime,
                                                      int viewTag,
                                                      const jsi::Value& frameProcessor) {
   __android_log_write(ANDROID_LOG_INFO, TAG,
-                      "Setting new Frame Processor...");
+                      "Setting new Audio Frame Processor...");
 
   if (!_runtimeManager || !_runtimeManager->runtime) {
     throw jsi::JSError(runtime,
-                       "setFrameProcessor(..): VisionCamera's RuntimeManager is not yet initialized!");
+                       "setAudioFrameProcessor(..): VisionCamera's RuntimeManager is not yet initialized!");
   }
 
   // find camera view
@@ -134,30 +134,87 @@ void FrameProcessorRuntimeManager::setFrameProcessor(jsi::Runtime& runtime,
       auto function = std::make_shared<jsi::Function>(worklet->getValue(rt).asObject(rt).asFunction(rt));
 
       // assign lambda to frame processor
-      cameraView->cthis()->setFrameProcessor([this, &rt, function](jni::alias_ref<JImageProxy::javaobject> frame) {
+      cameraView->cthis()->setAudioFrameProcessor([this, &rt, function](jni::alias_ref<JImageProxy::javaobject> frame) {
           try {
             // create HostObject which holds the Frame (JImageProxy)
             auto hostObject = std::make_shared<FrameHostObject>(frame);
             function->callWithThis(rt, *function, jsi::Object::createFromHostObject(rt, hostObject));
           } catch (jsi::JSError& jsError) {
-            auto message = "Frame Processor threw an error: " + jsError.getMessage();
+            auto message = "Audio Frame Processor threw an error: " + jsError.getMessage();
             __android_log_write(ANDROID_LOG_ERROR, TAG, message.c_str());
             this->logErrorToJS(message);
           }
       });
 
-      __android_log_write(ANDROID_LOG_INFO, TAG, "Frame Processor set!");
+      __android_log_write(ANDROID_LOG_INFO, TAG, "Video Frame Processor set!");
   });
 }
 
-void FrameProcessorRuntimeManager::unsetFrameProcessor(int viewTag) {
+void FrameProcessorRuntimeManager::setVideoFrameProcessor(jsi::Runtime& runtime,
+                                                     int viewTag,
+                                                     const jsi::Value& frameProcessor) {
+  __android_log_write(ANDROID_LOG_INFO, TAG,
+                      "Setting new Video Frame Processor...");
+
+  if (!_runtimeManager || !_runtimeManager->runtime) {
+    throw jsi::JSError(runtime,
+                       "setVideoFrameProcessor(..): VisionCamera's RuntimeManager is not yet initialized!");
+  }
+
+  // find camera view
+  auto cameraView = findCameraViewById(viewTag);
+  __android_log_write(ANDROID_LOG_INFO, TAG, "Found CameraView!");
+
+  // convert jsi::Function to a ShareableValue (can be shared across runtimes)
+  __android_log_write(ANDROID_LOG_INFO, TAG,
+                      "Adapting Shareable value from function (conversion to worklet)...");
+  auto worklet = reanimated::ShareableValue::adapt(runtime,
+                                                   frameProcessor,
+                                                   _runtimeManager.get());
+  __android_log_write(ANDROID_LOG_INFO, TAG, "Successfully created worklet!");
+
+  scheduler_->scheduleOnUI([=]() {
+      // cast worklet to a jsi::Function for the new runtime
+      auto& rt = *_runtimeManager->runtime;
+      auto function = std::make_shared<jsi::Function>(worklet->getValue(rt).asObject(rt).asFunction(rt));
+
+      // assign lambda to frame processor
+      cameraView->cthis()->setVideoFrameProcessor([this, &rt, function](jni::alias_ref<JImageProxy::javaobject> frame) {
+          try {
+            // create HostObject which holds the Frame (JImageProxy)
+            auto hostObject = std::make_shared<FrameHostObject>(frame);
+            function->callWithThis(rt, *function, jsi::Object::createFromHostObject(rt, hostObject));
+          } catch (jsi::JSError& jsError) {
+            auto message = "Video Frame Processor threw an error: " + jsError.getMessage();
+            __android_log_write(ANDROID_LOG_ERROR, TAG, message.c_str());
+            this->logErrorToJS(message);
+          }
+      });
+
+      __android_log_write(ANDROID_LOG_INFO, TAG, "Video Frame Processor set!");
+  });
+}
+
+void FrameProcessorRuntimeManager::unsetAudioFrameProcessor(int viewTag) {
   __android_log_write(ANDROID_LOG_INFO, TAG, "Removing Frame Processor...");
 
   // find camera view
   auto cameraView = findCameraViewById(viewTag);
 
   // call Java method to unset frame processor
-  cameraView->cthis()->unsetFrameProcessor();
+  cameraView->cthis()->unsetAudioFrameProcessor();
+
+  __android_log_write(ANDROID_LOG_INFO, TAG, "Frame Processor removed!");
+}
+
+void FrameProcessorRuntimeManager::unsetVideoFrameProcessor(int viewTag) {
+  __android_log_write(ANDROID_LOG_INFO, TAG, "Removing Frame Processor...");
+
+  // find camera view
+  auto cameraView = findCameraViewById(viewTag);
+
+  // call Java method to unset frame processor
+  cameraView->cthis()->unsetVideoFrameProcessor();
 
   __android_log_write(ANDROID_LOG_INFO, TAG, "Frame Processor removed!");
 }
@@ -174,61 +231,119 @@ void FrameProcessorRuntimeManager::installJSIBindings() {
 
   auto& jsiRuntime = *runtime_;
 
-  auto setFrameProcessor = [this](jsi::Runtime &runtime,
+  auto setAudioFrameProcessor = [this](jsi::Runtime &runtime,
                                   const jsi::Value &thisValue,
                                   const jsi::Value *arguments,
                                   size_t count) -> jsi::Value {
     __android_log_write(ANDROID_LOG_INFO, TAG,
-                        "Setting new Frame Processor...");
+                        "Setting new Audio Frame Processor...");
 
     if (!arguments[0].isNumber()) {
       throw jsi::JSError(runtime,
-                         "Camera::setFrameProcessor: First argument ('viewTag') must be a number!");
+                         "Camera::setAudioFrameProcessor: First argument ('viewTag') must be a number!");
     }
     if (!arguments[1].isObject()) {
       throw jsi::JSError(runtime,
-                         "Camera::setFrameProcessor: Second argument ('frameProcessor') must be a function!");
+                         "Camera::setAudioFrameProcessor: Second argument ('frameProcessor') must be a function!");
     }
 
     double viewTag = arguments[0].asNumber();
     const jsi::Value& frameProcessor = arguments[1];
-    this->setFrameProcessor(runtime, static_cast<int>(viewTag), frameProcessor);
+    this->setAudioFrameProcessor(runtime, static_cast<int>(viewTag), frameProcessor);
 
     return jsi::Value::undefined();
   };
   jsiRuntime.global().setProperty(jsiRuntime,
-                                  "setFrameProcessor",
+                                  "setAudioFrameProcessor",
                                   jsi::Function::createFromHostFunction(
                                       jsiRuntime,
                                       jsi::PropNameID::forAscii(jsiRuntime,
-                                                                "setFrameProcessor"),
+                                                                "setAudioFrameProcessor"),
                                       2,  // viewTag, frameProcessor
-                                      setFrameProcessor));
+                                      setAudioFrameProcessor));
 
 
-  auto unsetFrameProcessor = [this](jsi::Runtime &runtime,
+  auto unsetAudioFrameProcessor = [this](jsi::Runtime &runtime,
+                                    const jsi::Value &thisValue,
+                                    const jsi::Value *arguments,
+                                    size_t count) -> jsi::Value {
+    __android_log_write(ANDROID_LOG_INFO, TAG, "Removing Audio Frame Processor...");
+    if (!arguments[0].isNumber()) {
+      throw jsi::JSError(runtime,
+                         "Camera::unsetAudioFrameProcessor: First argument ('viewTag') must be a number!");
+    }
+
+    auto viewTag = arguments[0].asNumber();
+    this->unsetAudioFrameProcessor(static_cast<int>(viewTag));
+
+    return jsi::Value::undefined();
+  };
+  jsiRuntime.global().setProperty(jsiRuntime,
+                                  "unsetAudioFrameProcessor",
+                                  jsi::Function::createFromHostFunction(
+                                      jsiRuntime,
+                                      jsi::PropNameID::forAscii(jsiRuntime,
+                                                                "unsetAudioFrameProcessor"),
+                                      1, // viewTag
+                                      unsetAudioFrameProcessor));
+
+  __android_log_write(ANDROID_LOG_INFO, TAG, "Finished installing JSI bindings!");
+
+  auto setVideoFrameProcessor = [this](jsi::Runtime &runtime,
+                                  const jsi::Value &thisValue,
+                                  const jsi::Value *arguments,
+                                  size_t count) -> jsi::Value {
+    __android_log_write(ANDROID_LOG_INFO, TAG,
+                        "Setting new Video Frame Processor...");
+
+    if (!arguments[0].isNumber()) {
+      throw jsi::JSError(runtime,
+                         "Camera::setVideoFrameProcessor: First argument ('viewTag') must be a number!");
+    }
+    if (!arguments[1].isObject()) {
+      throw jsi::JSError(runtime,
+                         "Camera::setVideoFrameProcessor: Second argument ('frameProcessor') must be a function!");
+    }
+
+    double viewTag = arguments[0].asNumber();
+    const jsi::Value& frameProcessor = arguments[1];
+    this->setVideoFrameProcessor(runtime, static_cast<int>(viewTag), frameProcessor);
+
+    return jsi::Value::undefined();
+  };
+  jsiRuntime.global().setProperty(jsiRuntime,
+                                  "setVideoFrameProcessor",
+                                  jsi::Function::createFromHostFunction(
+                                      jsiRuntime,
+                                      jsi::PropNameID::forAscii(jsiRuntime,
+                                                                "setVideoFrameProcessor"),
+                                      2,  // viewTag, frameProcessor
+                                      setVideoFrameProcessor));
+
+
+  auto unsetVideoFrameProcessor = [this](jsi::Runtime &runtime,
                                     const jsi::Value &thisValue,
                                     const jsi::Value *arguments,
                                     size_t count) -> jsi::Value {
     __android_log_write(ANDROID_LOG_INFO, TAG, "Removing Frame Processor...");
     if (!arguments[0].isNumber()) {
       throw jsi::JSError(runtime,
-                         "Camera::unsetFrameProcessor: First argument ('viewTag') must be a number!");
+                         "Camera::unsetVideoFrameProcessor: First argument ('viewTag') must be a number!");
     }
 
     auto viewTag = arguments[0].asNumber();
-    this->unsetFrameProcessor(static_cast<int>(viewTag));
+    this->unsetVideoFrameProcessor(static_cast<int>(viewTag));
 
     return jsi::Value::undefined();
   };
   jsiRuntime.global().setProperty(jsiRuntime,
-                                  "unsetFrameProcessor",
+                                  "unsetVideoFrameProcessor",
                                   jsi::Function::createFromHostFunction(
                                       jsiRuntime,
                                       jsi::PropNameID::forAscii(jsiRuntime,
-                                                                "unsetFrameProcessor"),
+                                                                "unsetVideoFrameProcessor"),
                                       1, // viewTag
-                                      unsetFrameProcessor));
+                                      unsetVideoFrameProcessor));
 
   __android_log_write(ANDROID_LOG_INFO, TAG, "Finished installing JSI bindings!");
 }
