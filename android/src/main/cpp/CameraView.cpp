@@ -50,7 +50,7 @@ void CameraView::audioFrameProcessorCallback(const alias_ref<JImageProxy::javaob
 
 void CameraView::videoFrameProcessorCallback(const alias_ref<JImageProxy::javaobject>& frame) {
   if (videoFrameProcessor_ == nullptr) {
-    __android_log_write(ANDROID_LOG_WARN, TAG, "Called Frame Processor callback, but `videoFrameProcessor_` is null!");
+    __android_log_write(ANDROID_LOG_WARN, TAG, "Called Video Frame Processor callback, but `videoFrameProcessor_` is null!");
     return;
   }
 

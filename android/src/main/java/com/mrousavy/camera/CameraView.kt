@@ -265,7 +265,8 @@ class CameraView(context: Context, private val frameProcessorThread: ExecutorSer
   }
 
   private external fun initHybrid(): HybridData
-  private external fun frameProcessorCallback(frame: ImageProxy)
+  private external fun audioFrameProcessorCallback(frame: ImageProxy)
+  private external fun videoFrameProcessorCallback(frame: ImageProxy)
 
   override fun getLifecycle(): Lifecycle {
     return lifecycleRegistry
@@ -481,7 +482,7 @@ class CameraView(context: Context, private val frameProcessorThread: ExecutorSer
               lastFrameProcessorCall = now
 
               val perfSample = frameProcessorPerformanceDataCollector.beginPerformanceSampleCollection()
-              frameProcessorCallback(image)
+              videoFrameProcessorCallback(image)
               perfSample.endPerformanceSampleCollection()
             }
             image.close()

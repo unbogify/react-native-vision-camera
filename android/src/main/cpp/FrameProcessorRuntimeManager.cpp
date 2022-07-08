@@ -312,11 +312,11 @@ void FrameProcessorRuntimeManager::installJSIBindings() {
     return jsi::Value::undefined();
   };
   jsiRuntime.global().setProperty(jsiRuntime,
-                                  "setVideoFrameProcessor",
+                                  "setFrameProcessor",
                                   jsi::Function::createFromHostFunction(
                                       jsiRuntime,
                                       jsi::PropNameID::forAscii(jsiRuntime,
-                                                                "setVideoFrameProcessor"),
+                                                                "setFrameProcessor"),
                                       2,  // viewTag, frameProcessor
                                       setVideoFrameProcessor));
 
@@ -337,11 +337,11 @@ void FrameProcessorRuntimeManager::installJSIBindings() {
     return jsi::Value::undefined();
   };
   jsiRuntime.global().setProperty(jsiRuntime,
-                                  "unsetVideoFrameProcessor",
+                                  "unsetFrameProcessor",
                                   jsi::Function::createFromHostFunction(
                                       jsiRuntime,
                                       jsi::PropNameID::forAscii(jsiRuntime,
-                                                                "unsetVideoFrameProcessor"),
+                                                                "unsetFrameProcessor"),
                                       1, // viewTag
                                       unsetVideoFrameProcessor));
 
