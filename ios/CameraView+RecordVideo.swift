@@ -92,6 +92,7 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
             callback.resolve([
               "path": recordingSession.url.absoluteString,
               "duration": recordingSession.duration,
+              "initialTimestamp": CMTimeGetSeconds(recordingSession.initialTimestamp ?? CMTime.invalid),
             ])
           } else {
             callback.reject(error: .unknown(message: "AVAssetWriter completed with status: \(status.descriptor)"))
