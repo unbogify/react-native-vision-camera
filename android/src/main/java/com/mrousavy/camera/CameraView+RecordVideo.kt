@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import androidx.camera.video.FileOutputOptions
+import androidx.camera.video.RecordingStats
 import androidx.camera.video.VideoRecordEvent
 import androidx.core.content.ContextCompat
 import androidx.core.util.Consumer
@@ -12,6 +13,7 @@ import com.mrousavy.camera.utils.makeErrorMap
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+
 
 data class TemporaryFile(val path: String)
 
@@ -77,6 +79,8 @@ fun CameraView.startRecording(options: ReadableMap, onRecordCallback: Callback) 
 
         // reset the torch mode
         camera!!.cameraControl.enableTorch(torch == "on")
+      } else if (event is VideoRecordEvent.Start) {
+        firstRecordedImageTimestamp = lastFrameProcessorImageTimestamp;
       }
     }
   })
