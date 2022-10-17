@@ -128,6 +128,18 @@ export interface CameraProps extends ViewProps {
    * @platform iOS
    */
   videoStabilizationMode?: VideoStabilizationMode;
+  /**
+   *
+   * Requires `format` to be set.
+   * @platform iOS
+   */
+   exposureUs?: number;
+  /**
+   *
+   * Requires `format` to be set.
+   * @platform iOS
+   */
+  ISO?: number;
   //#endregion
 
   /**

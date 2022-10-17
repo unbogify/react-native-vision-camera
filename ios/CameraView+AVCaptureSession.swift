@@ -149,7 +149,7 @@ extension CameraView {
   /**
    Configures the Video Device with the given FPS, HDR and ColorSpace.
    */
-  final func configureDevice() {
+  final func configureDevice() async {
     ReactLogger.log(level: .info, message: "Configuring Device...")
     guard let device = videoDeviceInput?.device else {
       invokeOnError(.session(.cameraNotReady))
@@ -203,7 +203,18 @@ extension CameraView {
         }
         device.activeColorSpace = avColorSpace
       }
-
+        if device.isExposureModeSupported(.custom) {
+            if let ISO = ISO, let exposureUs = exposureUs {
+                ReactLogger.log(level: .info, message: "isExposureModeSupported: Custom exposure supported, ISO in \(device.activeFormat.minISO)..\(device.activeFormat.maxISO), exposure in \(CMTimeGetSeconds(device.activeFormat.minExposureDuration)*1000000)µs .. \(CMTimeGetSeconds(device.activeFormat.maxExposureDuration)*1000000)µs" )
+                let ISO = min(max(ISO.floatValue, device.activeFormat.minISO), device.activeFormat.maxISO)
+                let exposure = CMTimeMake(value: exposureUs.int64Value, timescale: 1000000)
+                let exposureClamped = CMTimeMinimum(CMTimeMaximum(exposure, device.activeFormat.minExposureDuration), device.activeFormat.maxExposureDuration)
+                ReactLogger.log(level: .info, message: "setExposureModeCustom \(ISO) \(CMTimeGetSeconds(exposureClamped)*1000000)µs" )
+                await device.setExposureModeCustom(duration: exposureClamped, iso: ISO)
+            }
+        } else {
+            ReactLogger.log(level: .info, message: "isExposureModeSupported: No custom exposure!")
+        }
       device.unlockForConfiguration()
       ReactLogger.log(level: .info, message: "Device successfully configured!")
     } catch let error as NSError {
