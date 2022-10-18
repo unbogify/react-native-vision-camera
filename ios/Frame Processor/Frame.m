@@ -13,18 +13,21 @@
 @implementation Frame {
   CMSampleBufferRef buffer;
   UIImageOrientation orientation;
+  double timestamp;
 }
 
-- (instancetype) initWithBuffer:(CMSampleBufferRef)buffer orientation:(UIImageOrientation)orientation {
+- (instancetype) initWithBuffer:(CMSampleBufferRef)buffer orientation:(UIImageOrientation)orientation timestamp:(double)timestamp {
   self = [super init];
   if (self) {
     _buffer = buffer;
     _orientation = orientation;
+    _timestamp = timestamp;
   }
   return self;
 }
 
 @synthesize buffer = _buffer;
 @synthesize orientation = _orientation;
+@synthesize timestamp = _timestamp;
 
 @end

@@ -30,7 +30,7 @@ class RecordingSession {
   private var bufferAdaptor: AVAssetWriterInputPixelBufferAdaptor?
   private let completionHandler: (RecordingSession, AVAssetWriter.Status, Error?) -> Void
 
-  private var initialTimestamp: CMTime?
+  var initialTimestamp: CMTime?
   private var latestTimestamp: CMTime?
   private var hasStartedWritingSession = false
   private var hasWrittenFirstVideoFrame = false
@@ -159,6 +159,7 @@ class RecordingSession {
         assetWriter.startSession(atSourceTime: timestamp)
         ReactLogger.log(level: .info, message: "Started RecordingSession at \(timestamp.seconds) seconds.")
         hasStartedWritingSession = true
+        initialTimestamp = timestamp
       }
       bufferAdaptor.append(imageBuffer, withPresentationTime: timestamp)
       if !hasWrittenFirstVideoFrame {

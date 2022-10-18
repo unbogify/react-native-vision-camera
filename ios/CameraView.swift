@@ -67,6 +67,7 @@ public final class CameraView: UIView {
   @objc var onError: RCTDirectEventBlock?
   @objc var onFrameProcessorPerformanceSuggestionAvailable: RCTDirectEventBlock?
   @objc var onViewReady: RCTDirectEventBlock?
+  @objc var onRecordingStarted: RCTDirectEventBlock?
   // zoom
   @objc var enableZoomGesture = false {
     didSet {
@@ -93,7 +94,8 @@ public final class CameraView: UIView {
   // CameraView+RecordView (+ FrameProcessorDelegate.mm)
   internal var isRecording = false
   internal var recordingSession: RecordingSession?
-  @objc public var frameProcessorCallback: FrameProcessorCallback?
+  @objc public var videoFrameProcessorCallback: FrameProcessorCallback?
+  @objc public var audioFrameProcessorCallback: FrameProcessorCallback?
   internal var lastFrameProcessorCall = DispatchTime.now()
   // CameraView+TakePhoto
   internal var photoCaptureDelegates: [PhotoCaptureDelegate] = []
@@ -106,7 +108,8 @@ public final class CameraView: UIView {
   internal let audioQueue = CameraQueues.audioQueue
 
   /// Specifies whether the frameProcessor() function is currently executing. used to drop late frames.
-  internal var isRunningFrameProcessor = false
+  internal var isRunningAudioFrameProcessor = false
+  internal var isRunningVideoFrameProcessor = false
   internal let frameProcessorPerformanceDataCollector = FrameProcessorPerformanceDataCollector()
   internal var actualFrameProcessorFps = 30.0
   internal var lastSuggestedFrameProcessorFps = 0.0
@@ -356,5 +359,11 @@ public final class CameraView: UIView {
       "suggestedFrameProcessorFps": suggestedFps,
     ])
     lastSuggestedFrameProcessorFps = suggestedFps
+  }
+
+  internal final func invokeOnRecordingStarted(videoPath: String) {
+    guard let onRecordingStarted = onRecordingStarted else { return }
+    ReactLogger.log(level: .info, message: "invokeOnRecordingStarted \(videoPath)")
+    onRecordingStarted(["video": ["path": videoPath]])
   }
 }
