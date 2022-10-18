@@ -1,6 +1,6 @@
 import React from 'react';
 import { requireNativeComponent, NativeModules, NativeSyntheticEvent, findNodeHandle, NativeMethods, Platform } from 'react-native';
-import type { FrameProcessorPerformanceSuggestion, VideoFileType } from '.';
+import type { FrameProcessorPerformanceSuggestion, TemporaryFile, VideoFileType } from '.';
 import type { CameraDevice } from './CameraDevice';
 import type { ErrorWithCause } from './CameraError';
 import { CameraCaptureError, CameraRuntimeError, tryParseNativeCameraError, isErrorWithCause } from './CameraError';
@@ -20,9 +20,14 @@ interface OnErrorEvent {
   message: string;
   cause?: ErrorWithCause;
 }
+
+interface OnRecordingStartedEvent {
+  video: TemporaryFile;
+}
+
 type NativeCameraViewProps = Omit<
   CameraProps,
-  'device' | 'onInitialized' | 'onError' | 'onFrameProcessorPerformanceSuggestionAvailable' | 'frameProcessor' | 'frameProcessorFps'
+  'device' | 'onInitialized' | 'onError' | 'onFrameProcessorPerformanceSuggestionAvailable' | 'onRecordingStarted' | 'frameProcessor' | 'audioFrameProcessor' | 'frameProcessorFps'
 > & {
   cameraId: string;
   frameProcessorFps?: number; // native cannot use number | string, so we use '-1' for 'auto'
@@ -30,6 +35,7 @@ type NativeCameraViewProps = Omit<
   onInitialized?: (event: NativeSyntheticEvent<void>) => void;
   onError?: (event: NativeSyntheticEvent<OnErrorEvent>) => void;
   onFrameProcessorPerformanceSuggestionAvailable?: (event: NativeSyntheticEvent<FrameProcessorPerformanceSuggestion>) => void;
+  onRecordingStarted?: (event: NativeSyntheticEvent<OnRecordingStartedEvent>) => void;
   onViewReady: () => void;
 };
 type RefType = React.Component<NativeCameraViewProps> & Readonly<NativeMethods>;
@@ -76,6 +82,7 @@ export class Camera extends React.PureComponent<CameraProps> {
   /** @internal */
   displayName = Camera.displayName;
   private lastFrameProcessor: ((frame: Frame) => void) | undefined;
+  private lastAudioFrameProcessor: ((frame: Frame) => void) | undefined;
   private isNativeViewMounted = false;
 
   private readonly ref: React.RefObject<RefType>;
@@ -87,8 +94,10 @@ export class Camera extends React.PureComponent<CameraProps> {
     this.onInitialized = this.onInitialized.bind(this);
     this.onError = this.onError.bind(this);
     this.onFrameProcessorPerformanceSuggestionAvailable = this.onFrameProcessorPerformanceSuggestionAvailable.bind(this);
+    this.onRecordingStarted = this.onRecordingStarted.bind(this);
     this.ref = React.createRef<RefType>();
     this.lastFrameProcessor = undefined;
+    this.lastAudioFrameProcessor = undefined;
   }
 
   private get handle(): number | null {
@@ -419,13 +428,17 @@ export class Camera extends React.PureComponent<CameraProps> {
     if (this.props.onFrameProcessorPerformanceSuggestionAvailable != null)
       this.props.onFrameProcessorPerformanceSuggestionAvailable(event.nativeEvent);
   }
+
+  private onRecordingStarted(event: NativeSyntheticEvent<OnRecordingStartedEvent>): void {
+    this.props.onRecordingStarted?.(event.nativeEvent.video);
+  }
   //#endregion
 
   //#region Lifecycle
   /** @internal */
   private assertFrameProcessorsEnabled(): void {
     // @ts-expect-error JSI functions aren't typed
-    if (global.setFrameProcessor == null || global.unsetFrameProcessor == null) {
+    if (global.setFrameProcessor == null || global.unsetFrameProcessor == null || global.setAudioFrameProcessor == null || global.unsetAudioFrameProcessor == null) {
       throw new CameraRuntimeError(
         'frame-processor/unavailable',
         'Frame Processors are not enabled. See https://react-native-vision-camera.com/docs/guides/troubleshooting',
@@ -439,10 +452,22 @@ export class Camera extends React.PureComponent<CameraProps> {
     global.setFrameProcessor(this.handle, frameProcessor);
   }
 
+  private setAudioFrameProcessor(frameProcessor: (frame: Frame) => void): void {
+    this.assertFrameProcessorsEnabled();
+    // @ts-expect-error JSI functions aren't typed
+    global.setAudioFrameProcessor(this.handle, frameProcessor);
+  }
+
   private unsetFrameProcessor(): void {
     this.assertFrameProcessorsEnabled();
     // @ts-expect-error JSI functions aren't typed
     global.unsetFrameProcessor(this.handle);
+  }
+
+  private unsetAudioFrameProcessor(): void {
+    this.assertFrameProcessorsEnabled();
+    // @ts-expect-error JSI functions aren't typed
+    global.unsetAudioFrameProcessor(this.handle);
   }
 
   private onViewReady(): void {
@@ -451,6 +476,11 @@ export class Camera extends React.PureComponent<CameraProps> {
       // user passed a `frameProcessor` but we didn't set it yet because the native view was not mounted yet. set it now.
       this.setFrameProcessor(this.props.frameProcessor);
       this.lastFrameProcessor = this.props.frameProcessor;
+    }
+    if (this.props.audioFrameProcessor != null) {
+      // user passed a `frameProcessor` but we didn't set it yet because the native view was not mounted yet. set it now.
+      this.setAudioFrameProcessor(this.props.audioFrameProcessor);
+      this.lastAudioFrameProcessor = this.props.audioFrameProcessor;
     }
   }
 
@@ -465,13 +495,34 @@ export class Camera extends React.PureComponent<CameraProps> {
 
       this.lastFrameProcessor = frameProcessor;
     }
+    const audioFrameProcessor = this.props.audioFrameProcessor;
+    if (audioFrameProcessor !== this.lastAudioFrameProcessor) {
+      // audioFrameProcessor argument identity changed. Update native to reflect the change.
+      if (audioFrameProcessor != null) this.setAudioFrameProcessor(audioFrameProcessor);
+      else this.unsetAudioFrameProcessor();
+
+      this.lastAudioFrameProcessor = audioFrameProcessor;
+    }
+  }
+
+  /** @internal */
+  componentWillUnmount(): void {
+    if (!this.isNativeViewMounted) return;
+    if (this.lastFrameProcessor != null || this.props.frameProcessor != null) {
+      this.unsetFrameProcessor();
+      this.lastFrameProcessor = undefined;
+    }
+    if (this.lastAudioFrameProcessor != null || this.props.audioFrameProcessor != null) {
+      this.unsetAudioFrameProcessor();
+      this.lastAudioFrameProcessor = undefined;
+    }
   }
   //#endregion
 
   /** @internal */
   public render(): React.ReactNode {
     // We remove the big `device` object from the props because we only need to pass `cameraId` to native.
-    const { device, frameProcessor, frameProcessorFps, ...props } = this.props;
+    const { device, frameProcessor, audioFrameProcessor, frameProcessorFps, ...props } = this.props;
     return (
       <NativeCameraView
         {...props}
@@ -482,6 +533,7 @@ export class Camera extends React.PureComponent<CameraProps> {
         onInitialized={this.onInitialized}
         onError={this.onError}
         onFrameProcessorPerformanceSuggestionAvailable={this.onFrameProcessorPerformanceSuggestionAvailable}
+        onRecordingStarted={this.onRecordingStarted}
         enableFrameProcessor={frameProcessor != null}
       />
     );

@@ -55,10 +55,14 @@ class FrameProcessorRuntimeManager : public jni::HybridClass<FrameProcessorRunti
   void registerPlugin(alias_ref<JFrameProcessorPlugin::javaobject> plugin);
   void logErrorToJS(const std::string& message);
 
-  void setFrameProcessor(jsi::Runtime& runtime,                 // NOLINT(runtime/references)
+  void setAudioFrameProcessor(jsi::Runtime& runtime,                 // NOLINT(runtime/references)
                          int viewTag,
                          const jsi::Value& frameProcessor);
-  void unsetFrameProcessor(int viewTag);
+  void setVideoFrameProcessor(jsi::Runtime& runtime,                 // NOLINT(runtime/references)
+                         int viewTag,
+                         const jsi::Value& frameProcessor);
+  void unsetAudioFrameProcessor(int viewTag);
+  void unsetVideoFrameProcessor(int viewTag);
 };
 
 } // namespace vision

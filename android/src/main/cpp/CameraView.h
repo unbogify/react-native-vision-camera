@@ -24,19 +24,24 @@ class CameraView : public jni::HybridClass<CameraView> {
   static void registerNatives();
 
   // TODO: Use template<> to avoid heap allocation for std::function<>
-  void setFrameProcessor(const TFrameProcessor&& frameProcessor);
-  void unsetFrameProcessor();
+  void setAudioFrameProcessor(const TFrameProcessor&& frameProcessor);
+  void setVideoFrameProcessor(const TFrameProcessor&& frameProcessor);
+  void unsetAudioFrameProcessor();
+  void unsetVideoFrameProcessor();
 
  private:
   friend HybridBase;
   jni::global_ref<CameraView::javaobject> javaPart_;
-  TFrameProcessor frameProcessor_;
+  TFrameProcessor audioFrameProcessor_;
+  TFrameProcessor videoFrameProcessor_;
 
-  void frameProcessorCallback(const jni::alias_ref<JImageProxy::javaobject>& frame);
+  void audioFrameProcessorCallback(const jni::alias_ref<JImageProxy::javaobject>& frame);
+  void videoFrameProcessorCallback(const jni::alias_ref<JImageProxy::javaobject>& frame);
 
   explicit CameraView(jni::alias_ref<CameraView::jhybridobject> jThis) :
     javaPart_(jni::make_global(jThis)),
-    frameProcessor_(nullptr)
+    audioFrameProcessor_(nullptr),
+    videoFrameProcessor_(nullptr)
   {}
 };
 
