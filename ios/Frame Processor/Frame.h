@@ -14,9 +14,10 @@
 
 @interface Frame : NSObject
 
-- (instancetype) initWithBuffer:(CMSampleBufferRef)buffer orientation:(UIImageOrientation)orientation;
+- (instancetype) initWithBuffer:(CMSampleBufferRef)buffer orientation:(UIImageOrientation)orientation timestamp:(double)timestamp;
 
 @property (nonatomic, readonly) CMSampleBufferRef buffer;
 @property (nonatomic, readonly) UIImageOrientation orientation;
+@property (nonatomic, readonly) double timestamp;
 
 @end

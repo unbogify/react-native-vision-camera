@@ -28,21 +28,18 @@ alias_ref<JClass> getUtilsClass() {
 }
 
 bool JImageProxy::getIsValid() const {
-  auto utilsClass = getUtilsClass();
-  static const auto isImageProxyValidMethod = utilsClass->getStaticMethod<jboolean(JImageProxy::javaobject)>("isImageProxyValid");
-  return isImageProxyValidMethod(utilsClass, self());
+    static const auto getIsValidMethod = getClass()->getMethod<jint()>("isImageProxyValid");
+    return getIsValidMethod(self());
 }
 
 int JImageProxy::getPlanesCount() const {
-  auto utilsClass = getUtilsClass();
-  static const auto getPlanesCountMethod = utilsClass->getStaticMethod<jint(JImageProxy::javaobject)>("getPlanesCount");
-  return getPlanesCountMethod(utilsClass, self());
+    static const auto getWidthMethod = getClass()->getMethod<jint()>("getPlanesCount");
+    return getWidthMethod(self());
 }
 
 int JImageProxy::getBytesPerRow() const {
-  auto utilsClass = getUtilsClass();
-  static const auto getBytesPerRowMethod = utilsClass->getStaticMethod<jint(JImageProxy::javaobject)>("getBytesPerRow");
-  return getBytesPerRowMethod(utilsClass, self());
+    static const auto getWidthMethod = getClass()->getMethod<jint()>("getBytesPerRow");
+    return getWidthMethod(self());
 }
 
 void JImageProxy::close() {
