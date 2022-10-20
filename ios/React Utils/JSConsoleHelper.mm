@@ -15,6 +15,8 @@
 #import <jsi/jsi.h>
 #import "RCTBridge+runOnJS.h"
 
+using namespace facebook;
+
 @implementation JSConsoleHelper
 
 + (const char *) getLogFunctionNameForLogLevel:(RCTLogLevel)level {

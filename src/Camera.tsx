@@ -302,6 +302,14 @@ export class Camera extends React.PureComponent<CameraProps> {
       throw tryParseNativeCameraError(e);
     }
   }
+
+  public async getCurrentExposureSettings(): Promise<any> {
+    try {
+      return await CameraModule.getCurrentExposureSettings(this.handle);
+    } catch (e) {
+      throw tryParseNativeCameraError(e);
+    }
+  }
   //#endregion
 
   /**
