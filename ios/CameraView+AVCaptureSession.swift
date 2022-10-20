@@ -149,7 +149,7 @@ extension CameraView {
   /**
    Configures the Video Device with the given FPS, HDR and ColorSpace.
    */
-  final func configureDevice() {
+  final func configureDevice() async {
     ReactLogger.log(level: .info, message: "Configuring Device...")
     guard let device = videoDeviceInput?.device else {
       invokeOnError(.session(.cameraNotReady))
@@ -203,7 +203,41 @@ extension CameraView {
         }
         device.activeColorSpace = avColorSpace
       }
+        if let exposureMode = exposureMode as String? {
+            if exposureMode == "auto" {
+                device.exposureMode = .continuousAutoExposure
+            } else if exposureMode == "custom" {
+                if device.isExposureModeSupported(.custom) {
+                    ReactLogger.log(level: .info, message: "isExposureModeSupported: Custom exposure supported, ISO in \(device.activeFormat.minISO)..\(device.activeFormat.maxISO), exposure in \(CMTimeGetSeconds(device.activeFormat.minExposureDuration)*1000000)µs .. \(CMTimeGetSeconds(device.activeFormat.maxExposureDuration)*1000000)µs" )
+                    var targetISO = AVCaptureDevice.currentISO
+                    var targetExposure = AVCaptureDevice.currentExposureDuration
+                    if let ISO = ISO {
+                        targetISO = min(max(ISO.floatValue, device.activeFormat.minISO), device.activeFormat.maxISO)
+                    }
+                    if let exposureDurationUs = exposureDurationUs {
+                        let exposure = CMTimeMake(value: exposureDurationUs.int64Value, timescale: 1000000)
+                        targetExposure = CMTimeMinimum(CMTimeMaximum(exposure, device.activeFormat.minExposureDuration), device.activeFormat.maxExposureDuration)
+                    }
+                    ReactLogger.log(level: .info, message: "setExposureModeCustom \(targetISO) \(CMTimeGetSeconds(targetExposure)*1000000)µs" )
+                    await device.setExposureModeCustom(duration: targetExposure, iso: targetISO)
+                } else {
+                    ReactLogger.log(level: .error, message: "isExposureModeSupported: No custom exposure!")
+                }
+            }
+        }
+        if let exposureTargetBias = exposureTargetBias {
+            ReactLogger.log(level: .info, message: "setExposureTargetBias: \(exposureTargetBias.floatValue), possible values in  \(device.minExposureTargetBias)..\(device.maxExposureTargetBias)" )
 
+            let exposureTargetBias = min(max(exposureTargetBias.floatValue, device.minExposureTargetBias), device.maxExposureTargetBias)
+            ReactLogger.log(level: .info, message: "setExposureTargetBias: \(exposureTargetBias)" )
+            device.setExposureTargetBias(exposureTargetBias, completionHandler: nil)
+        }
+        if let activeMaxExposureDurationUs = activeMaxExposureDurationUs {
+            ReactLogger.log(level: .info, message: "set activeMaxExposureDuration: \(activeMaxExposureDurationUs.int64Value)" )
+            device.activeMaxExposureDuration = CMTime(value: activeMaxExposureDurationUs.int64Value, timescale: 1000000)
+        } else {
+            device.activeMaxExposureDuration = CMTime.invalid
+        }
       device.unlockForConfiguration()
       ReactLogger.log(level: .info, message: "Device successfully configured!")
     } catch let error as NSError {
