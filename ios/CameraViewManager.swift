@@ -95,6 +95,7 @@ final class CameraViewManager: RCTViewManager {
         promise.resolve([
             "ISO": device.iso,
             "exposureDurationUs": CMTimeGetSeconds(device.exposureDuration)*1000000.0,
+            "exposureTargetOffset": device.exposureTargetOffset,
         ])
     }
 
