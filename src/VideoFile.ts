@@ -40,6 +40,13 @@ export interface RecordVideoOptions {
    * @platform iOS
    */
   videoCodec?: CameraVideoCodec;
+  /**
+   * Sets quality Video Recording in terms of bitrate.
+   * quality 100 is the default quality with about 0.2 bits per pixel.
+   * Setting it to 20 will thus reduce the file size by 1/5.
+   * @default 100
+   */
+  quality?: number;
 }
 
 /**

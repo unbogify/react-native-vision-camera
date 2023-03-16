@@ -125,7 +125,21 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
 
       // get pixel format (420f, 420v, x420)
       let pixelFormat = CMFormatDescriptionGetMediaSubType(videoInput.device.activeFormat.formatDescription)
-      recordingSession.initializeVideoWriter(withSettings: videoSettings,
+      var newSettings = videoSettings
+      if let quality = options["quality"] as? Double, CMTIME_IS_VALID(videoInput.device.activeVideoMinFrameDuration) {
+        let width = videoInput.device.activeFormat.videoDimensions.width
+        let height = videoInput.device.activeFormat.videoDimensions.height
+        let frameTime = CMTimeGetSeconds(videoInput.device.activeVideoMinFrameDuration)
+        // quality 100 means 0.2 bits per pixel
+        let magicQualityContant = 0.2 / 100.0
+        let bitRate = magicQualityContant * quality * width * height / frameTime
+
+        let compressionProperties: [String: Any] = [
+            AVVideoAverageBitRateKey: NSNumber(integerLiteral: Int(bitRate))
+        ]
+        newSettings[AVVideoCompressionPropertiesKey] = compressionProperties
+      }
+      recordingSession.initializeVideoWriter(withSettings: newSettings,
                                              pixelFormat: pixelFormat)
 
       // Init Audio (optional, async)
