@@ -1,6 +1,6 @@
 {
-  "name": "react-native-vision-camera",
-  "version": "2.15.4-unbogify",
+  "name": "@unbogify/react-native-vision-camera",
+  "version": "2.15.4-unbogify.1",
   "description": "The Camera library that sees the vision.",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -66,7 +66,7 @@
   },
   "homepage": "https://react-native-vision-camera.com/",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
+    "access": "public"
   },
   "devDependencies": {
     "@expo/config-plugins": "^4.0.0",
