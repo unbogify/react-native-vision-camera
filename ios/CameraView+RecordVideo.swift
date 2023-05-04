@@ -130,8 +130,9 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
         let width = videoInput.device.activeFormat.videoDimensions.width
         let height = videoInput.device.activeFormat.videoDimensions.height
         let frameTime = CMTimeGetSeconds(videoInput.device.activeVideoMinFrameDuration)
-        // quality 100 means 0.2 bits per pixel
-        let magicQualityContant = 0.2 / 100.0
+        // quality 100 means 0.1 bits per pixel,
+        // which is the default when not specifying quality
+        let magicQualityContant = 0.1 / 100.0
         let bitRate = magicQualityContant * quality * width * height / frameTime
 
         let compressionProperties: [String: Any] = [
