@@ -27,7 +27,14 @@ interface OnRecordingStartedEvent {
 
 type NativeCameraViewProps = Omit<
   CameraProps,
-  'device' | 'onInitialized' | 'onError' | 'onFrameProcessorPerformanceSuggestionAvailable' | 'onRecordingStarted' | 'frameProcessor' | 'audioFrameProcessor' | 'frameProcessorFps'
+  | 'device'
+  | 'onInitialized'
+  | 'onError'
+  | 'onFrameProcessorPerformanceSuggestionAvailable'
+  | 'onRecordingStarted'
+  | 'frameProcessor'
+  | 'audioFrameProcessor'
+  | 'frameProcessorFps'
 > & {
   cameraId: string;
   frameProcessorFps?: number; // native cannot use number | string, so we use '-1' for 'auto'
@@ -39,6 +46,11 @@ type NativeCameraViewProps = Omit<
   onViewReady: () => void;
 };
 type RefType = React.Component<NativeCameraViewProps> & Readonly<NativeMethods>;
+
+export type ExposureSettings = {
+  ISO: number;
+  exposureDurationUs: number;
+};
 //#endregion
 
 // NativeModules automatically resolves 'CameraView' to 'CameraViewModule'
@@ -303,7 +315,10 @@ export class Camera extends React.PureComponent<CameraProps> {
     }
   }
 
-  public async getCurrentExposureSettings(): Promise<any> {
+  /**
+   * Get the current exposure settings.
+   */
+  public async getCurrentExposureSettings(): Promise<ExposureSettings> {
     try {
       return await CameraModule.getCurrentExposureSettings(this.handle);
     } catch (e) {
