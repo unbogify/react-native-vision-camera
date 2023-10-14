@@ -84,6 +84,21 @@ final class CameraViewManager: RCTViewManager {
     component.focus(point: CGPoint(x: x.doubleValue, y: y.doubleValue), promise: promise)
   }
 
+    @objc
+    final func getCurrentExposureSettings(_ node: NSNumber, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+        let component = getCameraView(withTag: node)
+        let promise = Promise(resolver: resolve, rejecter: reject)
+        guard let device = component.videoDeviceInput?.device else {
+            promise.reject(error: .device(.configureError))
+            return
+        }
+        promise.resolve([
+            "ISO": device.iso,
+            "exposureDurationUs": CMTimeGetSeconds(device.exposureDuration)*1000000.0,
+            "exposureTargetOffset": device.exposureTargetOffset,
+        ])
+    }
+
   @objc
   final func getAvailableVideoCodecs(_ node: NSNumber, fileType: String?, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     withPromise(resolve: resolve, reject: reject) {
@@ -132,6 +147,8 @@ final class CameraViewManager: RCTViewManager {
           "supportsRawCapture": false, // TODO: supportsRawCapture
           "supportsLowLightBoost": $0.isLowLightBoostSupported,
           "supportsFocus": $0.isFocusPointOfInterestSupported,
+          "minExposureTargetBias": $0.minExposureTargetBias,
+          "maxExposureTargetBias": $0.maxExposureTargetBias,
           "formats": $0.formats.map { format -> [String: Any] in
             format.toDictionary()
           },

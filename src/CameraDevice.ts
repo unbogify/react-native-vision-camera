@@ -139,6 +139,14 @@ export interface CameraDeviceFormat {
    */
   minISO: number;
   /**
+   * Maximum supported exposure value (in μs)
+   */
+  maxExposureDurationUs: number;
+  /**
+   * Minimum supported exposure value (in μs)
+   */
+  minExposureDurationUs: number;
+  /**
    * The video field of view in degrees
    */
   fieldOfView: number;
@@ -281,4 +289,12 @@ export interface CameraDevice {
    * Specifies whether this device supports focusing ({@linkcode Camera.focus | Camera.focus(...)})
    */
   supportsFocus: boolean;
+  /**
+   * ..
+   */
+  minExposureTargetBias: number;
+  /**
+   * ..
+   */
+  maxExposureTargetBias: number;
 }

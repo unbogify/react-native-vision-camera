@@ -31,6 +31,8 @@ extension AVCaptureDevice.Format {
       "videoWidth": videoDimensions.width,
       "maxISO": maxISO,
       "minISO": minISO,
+      "maxExposureDurationUs": CMTimeGetSeconds(maxExposureDuration) * 1000.0 * 1000.0,
+      "minExposureDurationUs": CMTimeGetSeconds(minExposureDuration) * 1000.0 * 1000.0,
       "fieldOfView": videoFieldOfView,
       "maxZoom": videoMaxZoomFactor,
       "colorSpaces": supportedColorSpaces.map(\.descriptor),

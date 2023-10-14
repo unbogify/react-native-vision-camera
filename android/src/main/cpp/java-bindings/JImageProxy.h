@@ -13,7 +13,8 @@ using namespace facebook;
 using namespace jni;
 
 struct JImageProxy : public JavaClass<JImageProxy> {
-  static constexpr auto kJavaDescriptor = "Landroidx/camera/core/ImageProxy;";
+  // androidx/camera/core/ImageProxy
+  static constexpr auto kJavaDescriptor = "Lcom/mrousavy/camera/frameprocessor/VisionImageProxy;";
 
  public:
   int getWidth() const;
@@ -21,6 +22,7 @@ struct JImageProxy : public JavaClass<JImageProxy> {
   bool getIsValid() const;
   int getPlanesCount() const;
   int getBytesPerRow() const;
+  long getRecordingStartTs() const;
   void close();
 };
 

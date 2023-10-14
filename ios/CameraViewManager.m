@@ -40,6 +40,11 @@ RCT_EXPORT_VIEW_PROPERTY(hdr, NSNumber); // nullable bool
 RCT_EXPORT_VIEW_PROPERTY(lowLightBoost, NSNumber); // nullable bool
 RCT_EXPORT_VIEW_PROPERTY(colorSpace, NSString);
 RCT_EXPORT_VIEW_PROPERTY(videoStabilizationMode, NSString);
+RCT_EXPORT_VIEW_PROPERTY(activeMaxExposureDurationUs, NSNumber)
+RCT_EXPORT_VIEW_PROPERTY(exposureTargetBias, NSNumber);
+RCT_EXPORT_VIEW_PROPERTY(exposureMode, NSString);
+RCT_EXPORT_VIEW_PROPERTY(exposureDurationUs, NSNumber);
+RCT_EXPORT_VIEW_PROPERTY(ISO, NSNumber);
 // other props
 RCT_EXPORT_VIEW_PROPERTY(preset, NSString);
 RCT_EXPORT_VIEW_PROPERTY(torch, NSString);
@@ -51,6 +56,7 @@ RCT_EXPORT_VIEW_PROPERTY(onError, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onInitialized, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onFrameProcessorPerformanceSuggestionAvailable, RCTDirectEventBlock);
 RCT_EXPORT_VIEW_PROPERTY(onViewReady, RCTDirectEventBlock);
+RCT_EXPORT_VIEW_PROPERTY(onRecordingStarted, RCTDirectEventBlock);
 
 // Camera View Functions
 RCT_EXTERN_METHOD(startRecording:(nonnull NSNumber *)node options:(NSDictionary *)options onRecordCallback:(RCTResponseSenderBlock)onRecordCallback);
@@ -59,6 +65,9 @@ RCT_EXTERN_METHOD(resumeRecording:(nonnull NSNumber *)node resolve:(RCTPromiseRe
 RCT_EXTERN_METHOD(stopRecording:(nonnull NSNumber *)node resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject);
 RCT_EXTERN_METHOD(takePhoto:(nonnull NSNumber *)node options:(NSDictionary *)options resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject);
 RCT_EXTERN_METHOD(focus:(nonnull NSNumber *)node point:(NSDictionary *)point resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject);
+RCT_EXTERN_METHOD(getCurrentExposureSettings:(nonnull NSNumber *)node
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject);
 
 RCT_EXTERN_METHOD(getAvailableVideoCodecs:(nonnull NSNumber *)node fileType:(NSString *)fileType resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject);
 

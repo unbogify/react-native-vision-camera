@@ -22,6 +22,10 @@ export interface Frame {
    * Returns the number of planes this frame contains.
    */
   planesCount: number;
+  /**
+   * Returns the orientation of the frame.
+   */
+  orientation: null | 'up' | 'down' | 'left' | 'right' | 'upMirrored' | 'downMirrored' | 'leftMirrored' | 'rightMirrored';
 
   /**
    * Returns a string representation of the frame.

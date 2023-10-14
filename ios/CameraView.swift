@@ -30,7 +30,12 @@ private let propsThatRequireReconfiguration = ["cameraId",
 private let propsThatRequireDeviceReconfiguration = ["fps",
                                                      "hdr",
                                                      "lowLightBoost",
-                                                     "colorSpace"]
+                                                     "colorSpace",
+                                                     "exposureMode",
+                                                     "exposureTargetBias",
+                                                     "exposureDurationUs",
+                                                     "ISO",
+                                                     "activeMaxExposureDurationUs"]
 
 // MARK: - CameraView
 
@@ -55,6 +60,12 @@ public final class CameraView: UIView {
   @objc var frameProcessorFps: NSNumber = -1.0 // "auto"
   @objc var hdr: NSNumber? // nullable bool
   @objc var lowLightBoost: NSNumber? // nullable bool
+  @objc var activeMaxExposureDurationUs: NSNumber?
+  @objc var exposureTargetBias: NSNumber?
+  @objc var exposureMode: NSString?
+  @objc var exposureDurationUs: NSNumber?
+  @objc var ISO: NSNumber?
+
   @objc var colorSpace: NSString?
   @objc var orientation: NSString?
   // other props
@@ -67,6 +78,7 @@ public final class CameraView: UIView {
   @objc var onError: RCTDirectEventBlock?
   @objc var onFrameProcessorPerformanceSuggestionAvailable: RCTDirectEventBlock?
   @objc var onViewReady: RCTDirectEventBlock?
+  @objc var onRecordingStarted: RCTDirectEventBlock?
   // zoom
   @objc var enableZoomGesture = false {
     didSet {
@@ -93,7 +105,8 @@ public final class CameraView: UIView {
   // CameraView+RecordView (+ FrameProcessorDelegate.mm)
   internal var isRecording = false
   internal var recordingSession: RecordingSession?
-  @objc public var frameProcessorCallback: FrameProcessorCallback?
+  @objc public var videoFrameProcessorCallback: FrameProcessorCallback?
+  @objc public var audioFrameProcessorCallback: FrameProcessorCallback?
   internal var lastFrameProcessorCall = DispatchTime.now().uptimeNanoseconds
   // CameraView+TakePhoto
   internal var photoCaptureDelegates: [PhotoCaptureDelegate] = []
@@ -106,7 +119,8 @@ public final class CameraView: UIView {
   internal let audioQueue = CameraQueues.audioQueue
 
   /// Specifies whether the frameProcessor() function is currently executing. used to drop late frames.
-  internal var isRunningFrameProcessor = false
+  internal var isRunningAudioFrameProcessor = false
+  internal var isRunningVideoFrameProcessor = false
   internal let frameProcessorPerformanceDataCollector = FrameProcessorPerformanceDataCollector()
   internal var actualFrameProcessorFps = 30.0
   internal var lastSuggestedFrameProcessorFps = 0.0
@@ -209,47 +223,49 @@ public final class CameraView: UIView {
       shouldUpdateVideoStabilization ||
       shouldUpdateOrientation {
       cameraQueue.async {
-        if shouldReconfigure {
-          self.configureCaptureSession()
-        }
-        if shouldReconfigureFormat {
-          self.configureFormat()
-        }
-        if shouldReconfigureDevice {
-          self.configureDevice()
-        }
-        if shouldUpdateVideoStabilization, let videoStabilizationMode = self.videoStabilizationMode as String? {
-          self.captureSession.setVideoStabilizationMode(videoStabilizationMode)
-        }
+          Task {
+              if shouldReconfigure {
+                  self.configureCaptureSession()
+              }
+              if shouldReconfigureFormat {
+                  self.configureFormat()
+              }
+              if shouldReconfigureDevice {
+                  await self.configureDevice()
+              }
+              if shouldUpdateVideoStabilization, let videoStabilizationMode = self.videoStabilizationMode as String? {
+                  self.captureSession.setVideoStabilizationMode(videoStabilizationMode)
+              }
 
-        if shouldUpdateZoom {
-          let zoomClamped = max(min(CGFloat(self.zoom.doubleValue), self.maxAvailableZoom), self.minAvailableZoom)
-          self.zoom(factor: zoomClamped, animated: false)
-          self.pinchScaleOffset = zoomClamped
-        }
+              if shouldUpdateZoom {
+                  let zoomClamped = max(min(CGFloat(self.zoom.doubleValue), self.maxAvailableZoom), self.minAvailableZoom)
+                  self.zoom(factor: zoomClamped, animated: false)
+                  self.pinchScaleOffset = zoomClamped
+              }
 
-        if shouldCheckActive && self.captureSession.isRunning != self.isActive {
-          if self.isActive {
-            ReactLogger.log(level: .info, message: "Starting Session...")
-            self.captureSession.startRunning()
-            ReactLogger.log(level: .info, message: "Started Session!")
-          } else {
-            ReactLogger.log(level: .info, message: "Stopping Session...")
-            self.captureSession.stopRunning()
-            ReactLogger.log(level: .info, message: "Stopped Session!")
+              if shouldCheckActive && self.captureSession.isRunning != self.isActive {
+                  if self.isActive {
+                      ReactLogger.log(level: .info, message: "Starting Session...")
+                      self.captureSession.startRunning()
+                      ReactLogger.log(level: .info, message: "Started Session!")
+                  } else {
+                      ReactLogger.log(level: .info, message: "Stopping Session...")
+                      self.captureSession.stopRunning()
+                      ReactLogger.log(level: .info, message: "Stopped Session!")
+                  }
+              }
+
+              if shouldUpdateOrientation {
+                  self.updateOrientation()
+              }
+
+              // This is a wack workaround, but if I immediately set torch mode after `startRunning()`, the session isn't quite ready yet and will ignore torch.
+//              if shouldUpdateTorch {
+//                  self.cameraQueue.asyncAfter(deadline: .now() + 0.1) {
+//                      self.setTorchMode(self.torch)
+//                  }
+//              }
           }
-        }
-
-        if shouldUpdateOrientation {
-          self.updateOrientation()
-        }
-
-        // This is a wack workaround, but if I immediately set torch mode after `startRunning()`, the session isn't quite ready yet and will ignore torch.
-        if shouldUpdateTorch {
-          self.cameraQueue.asyncAfter(deadline: .now() + 0.1) {
-            self.setTorchMode(self.torch)
-          }
-        }
       }
 
       // Audio Configuration
@@ -356,5 +372,11 @@ public final class CameraView: UIView {
       "suggestedFrameProcessorFps": suggestedFps,
     ])
     lastSuggestedFrameProcessorFps = suggestedFps
+  }
+
+  internal final func invokeOnRecordingStarted(videoPath: String) {
+    guard let onRecordingStarted = onRecordingStarted else { return }
+    ReactLogger.log(level: .info, message: "invokeOnRecordingStarted \(videoPath)")
+    onRecordingStarted(["video": ["path": videoPath]])
   }
 }

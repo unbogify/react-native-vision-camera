@@ -1,4 +1,5 @@
 import type { ViewProps } from 'react-native';
+import type { TemporaryFile } from './TemporaryFile';
 import type { CameraDevice, CameraDeviceFormat, ColorSpace, VideoStabilizationMode } from './CameraDevice';
 import type { CameraRuntimeError } from './CameraError';
 import type { CameraPreset } from './CameraPreset';
@@ -127,6 +128,36 @@ export interface CameraProps extends ViewProps {
    * @platform iOS
    */
   videoStabilizationMode?: VideoStabilizationMode;
+  /**
+   *
+   * Requires `format` to be set.
+   * @platform iOS
+   */
+   activeMaxExposureDurationUs?: number;
+  /**
+   *
+   * Requires `format` to be set.
+   * @platform iOS
+   */
+  exposureMode?: 'auto' | 'custom';
+  /**
+   *
+   * Requires `format` to be set.
+   * @platform iOS
+   */
+  exposureDurationUs?: number;
+  /**
+   *
+   * Requires `format` to be set.
+   * @platform iOS
+   */
+  exposureTargetBias?: number;
+  /**
+   *
+   * Requires `format` to be set.
+   * @platform iOS
+   */
+  ISO?: number;
   //#endregion
 
   /**
@@ -175,6 +206,10 @@ export interface CameraProps extends ViewProps {
    */
   onFrameProcessorPerformanceSuggestionAvailable?: (suggestion: FrameProcessorPerformanceSuggestion) => void;
   /**
+   * Called after starting a new recording successfully.
+   */
+  onRecordingStarted?: (video: TemporaryFile) => void;
+  /**
    * A worklet which will be called for every frame the Camera "sees". Throttle the Frame Processor's frame rate with {@linkcode frameProcessorFps}.
    *
    * > See [the Frame Processors documentation](https://react-native-vision-camera.com/docs/guides/frame-processors) for more information
@@ -193,6 +228,7 @@ export interface CameraProps extends ViewProps {
    * ```
    */
   frameProcessor?: (frame: Frame) => void;
+  audioFrameProcessor?: (frame: Frame) => void;
   /**
    * Specifies the maximum frame rate the frame processor can use, independent of the Camera's frame rate (`fps` property).
    *

@@ -92,6 +92,7 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
             callback.resolve([
               "path": recordingSession.url.absoluteString,
               "duration": recordingSession.duration,
+              "initialTimestamp": CMTimeGetSeconds(recordingSession.initialTimestamp ?? CMTime.invalid),
             ])
           } else {
             callback.reject(error: .unknown(message: "AVAssetWriter completed with status: \(status.descriptor)"))
@@ -124,7 +125,22 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
 
       // get pixel format (420f, 420v, x420)
       let pixelFormat = CMFormatDescriptionGetMediaSubType(videoInput.device.activeFormat.formatDescription)
-      recordingSession.initializeVideoWriter(withSettings: videoSettings,
+      var newSettings = videoSettings
+      if let quality = options["quality"] as? Double, CMTIME_IS_VALID(videoInput.device.activeVideoMinFrameDuration) {
+        let width = videoInput.device.activeFormat.videoDimensions.width
+        let height = videoInput.device.activeFormat.videoDimensions.height
+        let frameTime = CMTimeGetSeconds(videoInput.device.activeVideoMinFrameDuration)
+        // quality 100 means 0.1 bits per pixel,
+        // which is the default when not specifying quality
+        let magicQualityContant = 0.1 / 100.0
+        let bitRate = magicQualityContant * quality * width * height / frameTime
+
+        let compressionProperties: [String: Any] = [
+            AVVideoAverageBitRateKey: NSNumber(integerLiteral: Int(bitRate))
+        ]
+        newSettings[AVVideoCompressionPropertiesKey] = compressionProperties
+      }
+      recordingSession.initializeVideoWriter(withSettings: newSettings,
                                              pixelFormat: pixelFormat)
 
       // Init Audio (optional, async)
@@ -145,7 +161,9 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
         callback.reject(error: .capture(.createRecorderError(message: "RecordingSession failed to start asset writer.")), cause: error)
         return
       }
+      self.recordingSession = recordingSession
       self.isRecording = true
+      self.invokeOnRecordingStarted(videoPath: tempURL.absoluteString)
     }
   }
 
@@ -191,6 +209,7 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
 
   public final func captureOutput(_ captureOutput: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from _: AVCaptureConnection) {
     // Video Recording runs in the same queue
+    var timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
     if isRecording {
       guard let recordingSession = recordingSession else {
         invokeOnError(.capture(.unknown(message: "isRecording was true but the RecordingSession was null!")))
@@ -199,40 +218,64 @@ extension CameraView: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAud
 
       switch captureOutput {
       case is AVCaptureVideoDataOutput:
-        recordingSession.appendBuffer(sampleBuffer, type: .video, timestamp: CMSampleBufferGetPresentationTimeStamp(sampleBuffer))
+        recordingSession.appendBuffer(sampleBuffer, type: .video, timestamp: timestamp)
       case is AVCaptureAudioDataOutput:
-        let timestamp = CMSyncConvertTime(CMSampleBufferGetPresentationTimeStamp(sampleBuffer),
-                                          from: audioCaptureSession.masterClock ?? CMClockGetHostTimeClock(),
-                                          to: captureSession.masterClock ?? CMClockGetHostTimeClock())
+        timestamp = CMSyncConvertTime(timestamp,
+                                                     from: audioCaptureSession.masterClock!,
+                                                     to: captureSession.masterClock!)
         recordingSession.appendBuffer(sampleBuffer, type: .audio, timestamp: timestamp)
       default:
         break
       }
+      timestamp = recordingSession.initialTimestamp ?? CMTime.invalid
     }
 
-    if let frameProcessor = frameProcessorCallback, captureOutput is AVCaptureVideoDataOutput {
+      if let frameProcessor = audioFrameProcessorCallback, captureOutput is AVCaptureAudioDataOutput {
+              if !isRunningAudioFrameProcessor {
+                  var bufferCopy : CMSampleBuffer?
+                  let err = CMSampleBufferCreateCopy(allocator: kCFAllocatorDefault, sampleBuffer: sampleBuffer, sampleBufferOut: &bufferCopy)
+                  if err == noErr {
+                      // we're not in the middle of executing the Frame Processor, so prepare for next call.
+                      CameraQueues.frameProcessorQueue.async {
+                          self.isRunningAudioFrameProcessor = true
+
+                          //print("AVCaptureAudioDataOutput \(timestamp)\n")
+
+                          let frame = Frame(buffer: bufferCopy!, orientation: self.bufferOrientation, timestamp: CMTimeGetSeconds(timestamp))
+                          frameProcessor(frame)
+
+                          self.isRunningAudioFrameProcessor = false
+                      }
+                  }
+              } else {
+                  // we're still in the middle of executing a Frame Processor for a previous frame, so a frame was dropped.
+                  ReactLogger.log(level: .warning, message: "The Audio Frame Processor took so long to execute that a frame was dropped.")
+              }
+           }
+
+    if let frameProcessor = videoFrameProcessorCallback, captureOutput is AVCaptureVideoDataOutput {
       // check if last frame was x nanoseconds ago, effectively throttling FPS
       let frameTime = UInt64(CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds * 1_000_000_000.0)
       let lastFrameProcessorCallElapsedTime = frameTime - lastFrameProcessorCall
       let secondsPerFrame = 1.0 / actualFrameProcessorFps
       let nanosecondsPerFrame = secondsPerFrame * 1_000_000_000.0
       if lastFrameProcessorCallElapsedTime >= UInt64(nanosecondsPerFrame) {
-        if !isRunningFrameProcessor {
+        if !isRunningVideoFrameProcessor {
           // we're not in the middle of executing the Frame Processor, so prepare for next call.
           CameraQueues.frameProcessorQueue.async {
-            self.isRunningFrameProcessor = true
+            self.isRunningVideoFrameProcessor = true
 
             let perfSample = self.frameProcessorPerformanceDataCollector.beginPerformanceSampleCollection()
-            let frame = Frame(buffer: sampleBuffer, orientation: self.bufferOrientation)
+            let frame = Frame(buffer: sampleBuffer, orientation: self.bufferOrientation, timestamp: CMTimeGetSeconds(timestamp))
             frameProcessor(frame)
             perfSample.endPerformanceSampleCollection()
 
-            self.isRunningFrameProcessor = false
+            self.isRunningVideoFrameProcessor = false
           }
           lastFrameProcessorCall = frameTime
         } else {
           // we're still in the middle of executing a Frame Processor for a previous frame, so a frame was dropped.
-          ReactLogger.log(level: .warning, message: "The Frame Processor took so long to execute that a frame was dropped.")
+          ReactLogger.log(level: .warning, message: "The Video Frame Processor took so long to execute that a frame was dropped.")
         }
       }
 

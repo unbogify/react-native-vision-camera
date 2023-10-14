@@ -100,6 +100,7 @@ extension CameraView {
 
       audioCaptureSession.startRunning()
     } catch let error as NSError {
+        ReactLogger.log(level: .info, message: "Activating Audio Session failed \(error.localizedDescription)")
       switch error.code {
       case 561_017_449:
         self.invokeOnError(.session(.audioInUseByOtherApp), cause: error)

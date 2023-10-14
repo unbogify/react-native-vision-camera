@@ -27,6 +27,7 @@ import com.facebook.react.bridge.*
 import com.facebook.react.uimanager.events.RCTEventEmitter
 import com.mrousavy.camera.frameprocessor.FrameProcessorPerformanceDataCollector
 import com.mrousavy.camera.frameprocessor.FrameProcessorRuntimeManager
+import com.mrousavy.camera.frameprocessor.VisionImageProxy
 import com.mrousavy.camera.utils.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.guava.await
@@ -132,6 +133,9 @@ class CameraView(context: Context, private val frameProcessorThread: ExecutorSer
   internal var activeVideoRecording: Recording? = null
 
   private var lastFrameProcessorCall = System.currentTimeMillis()
+
+  var lastFrameProcessorImageTimestamp: Long = 0
+  var firstRecordedImageTimestamp: Long = 0
 
   private var extensionsManager: ExtensionsManager? = null
 
@@ -267,7 +271,8 @@ class CameraView(context: Context, private val frameProcessorThread: ExecutorSer
   }
 
   private external fun initHybrid(): HybridData
-  private external fun frameProcessorCallback(frame: ImageProxy)
+  private external fun audioFrameProcessorCallback(frame: VisionImageProxy)
+  private external fun videoFrameProcessorCallback(frame: VisionImageProxy)
 
   override fun getLifecycle(): Lifecycle {
     return lifecycleRegistry
@@ -488,7 +493,9 @@ class CameraView(context: Context, private val frameProcessorThread: ExecutorSer
               lastFrameProcessorCall = now
 
               val perfSample = frameProcessorPerformanceDataCollector.beginPerformanceSampleCollection()
-              frameProcessorCallback(image)
+              lastFrameProcessorImageTimestamp = image.imageInfo.timestamp;
+              val visionImageProxy = VisionImageProxy(image, firstRecordedImageTimestamp)
+              videoFrameProcessorCallback(visionImageProxy)
               perfSample.endPerformanceSampleCollection()
             }
             image.close()
