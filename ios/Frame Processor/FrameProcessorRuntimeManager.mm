@@ -165,7 +165,7 @@ __attribute__((objc_runtime_name("_TtC12VisionCamera10CameraView")))
           frameHostObject->close();
         };
 
-        NSLog(@"FrameProcessorBindings: Frame processor set!");
+        NSLog(@"FrameProcessorBindings: Videio frame processor set!");
       });
     });
 
@@ -214,9 +214,9 @@ __attribute__((objc_runtime_name("_TtC12VisionCamera10CameraView")))
                                                                                                   function));
       }
 
-      NSLog(@"FrameProcessorBindings: Setting new video frame processor...");
-      if (!arguments[0].isNumber()) throw jsi::JSError(rnRuntime, "Camera::setVideoFrameProcessor: First argument ('viewTag') must be a number!");
-      if (!arguments[1].isObject()) throw jsi::JSError(rnRuntime, "Camera::setVideoFrameProcessor: Second argument ('frameProcessor') must be a function!");
+      NSLog(@"FrameProcessorBindings: Setting new audio frame processor...");
+      if (!arguments[0].isNumber()) throw jsi::JSError(rnRuntime, "Camera::setAudioFrameProcessor: First argument ('viewTag') must be a number!");
+      if (!arguments[1].isObject()) throw jsi::JSError(rnRuntime, "Camera::setAudioFrameProcessor: Second argument ('frameProcessor') must be a function!");
 
       auto viewTag = arguments[0].asNumber();
       NSLog(@"FrameProcessorBindings: Adapting Shareable value from function (conversion to worklet)...");
@@ -254,7 +254,7 @@ __attribute__((objc_runtime_name("_TtC12VisionCamera10CameraView")))
             frameHostObject->close();
           };
 
-          NSLog(@"FrameProcessorBindings: Frame processor set!");
+          NSLog(@"FrameProcessorBindings: Audio frame processor set!");
         });
       });
 
@@ -263,7 +263,7 @@ __attribute__((objc_runtime_name("_TtC12VisionCamera10CameraView")))
     jsiRuntime.global().setProperty(jsiRuntime, "setAudioFrameProcessor", jsi::Function::createFromHostFunction(jsiRuntime,
                                                                                                            jsi::PropNameID::forAscii(jsiRuntime, "setAudioFrameProcessor"),
                                                                                                            2,  // viewTag, frameProcessor
-                                                                                                           setVideoFrameProcessor));
+                                                                                                           setAudioFrameProcessor));
 
   // unsetFrameProcessor(viewTag: number)
   auto unsetVideoFrameProcessor = [](jsi::Runtime& runtime,
